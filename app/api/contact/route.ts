@@ -1,0 +1,9 @@
+import {NextResponse} from 'next/server';
+export async function POST(req:Request){
+if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)return NextResponse.json({message:'Request origin not allowed.'},{status:403});
+if(Number(req.headers.get('content-length')||0)>16384)return NextResponse.json({message:'Request too large.'},{status:413});
+try{const raw=await req.text();if(raw.length>16384)return NextResponse.json({message:'Request too large.'},{status:413});const d=JSON.parse(raw);if(!d||typeof d!=='object'||['name','email','company','topic','message'].some(k=>typeof d[k]!=='string')||d.name.trim().length<1||d.name.length>100||d.company.trim().length<1||d.company.length>150||d.email.length>254||! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)||d.message.trim().length<10||d.message.length>3000||!['General enquiry','Services','Partnerships','Careers'].includes(d.topic)||d.consent!=='yes')return NextResponse.json({message:'Please complete all fields with valid details and consent.'},{status:400});
+const endpoint=process.env.CONTACT_WEBHOOK_URL;if(!endpoint)return NextResponse.json({message:'Demo complete: your enquiry passed validation. No information was saved or sent.',demo:true});
+if(!endpoint.startsWith('https://'))throw new Error('Invalid delivery configuration');
+const result=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:d.name.trim(),email:d.email.trim(),company:d.company.trim(),topic:d.topic,message:d.message.trim(),consent:true}),signal:AbortSignal.timeout(10000)});if(!result.ok)throw new Error('Delivery failed');return NextResponse.json({message:'Thank you. Your enquiry has been submitted.'});
+}catch{return NextResponse.json({message:'We could not process your enquiry. Please check your details and try again.'},{status:400})}}
