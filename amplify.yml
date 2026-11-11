@@ -4,12 +4,11 @@ frontend:
     preBuild:
       commands:
         - nvm use 22
-        - corepack enable
-        - pnpm install --frozen-lockfile
+        - npm install
     build:
       commands:
         - node scripts/write-env.mjs
-        - pnpm run build
+        - npm run build
   artifacts:
     baseDirectory: .next
     files:
